@@ -8,22 +8,25 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 
-engine = create_engine("sqlite:///Resources/hawaii.sqlite")
-# reflect an existing database into a new model
 
-Base = automap_base()
-# reflect the tables
-Base.prepare(engine, reflect=True)
+def db_initialize():
+    engine = create_engine("sqlite:///Resources/hawaii.sqlite")
+    # reflect an existing database into a new model
 
-print(Base.classes.keys)
+    Base = automap_base()
+    # reflect the tables
+    Base.prepare(engine, reflect=True)
+
+    print(Base.classes.keys)
 
 
-# Save reference to the table
-Measurement = Base.classes.measurement
-Station = Base.classes.station
-#####
-session = Session(engine)
+    # Save reference to the table
+    Measurement = Base.classes.measurement
+    Station = Base.classes.station
+    #####
+    session = Session(engine)
 
+    return session, Measurement, Station
 
 # Flask Setup
 app = Flask(__name__)
@@ -41,7 +44,7 @@ def welcome():
 
 @app.route("/api/v1.0/precipitation")
 def precipitation():
-
+    session, Measurement, Station = db_initialize()
     # Calculate the date 1 year ago from the last data point in the database
     lastdate = session.query(Measurement.date).order_by(Measurement.date.desc()).first()
     lastdate = dt.datetime.strptime(str(lastdate[0]), '%Y-%m-%d')
@@ -57,6 +60,7 @@ def precipitation():
 
 @app.route("/api/v1.0/stations")
 def stations():
+    session, Measurement, Station = db_initialize()
     results = session.query(Station.name,Station.station)
 
     return jsonify({k:v for k,v in results})
@@ -65,9 +69,11 @@ def stations():
 
 @app.route("/api/v1.0/tobs")
 def tobs():
+    session, Measurement, Station = db_initialize()
     # Calculate the date 1 year ago from the last data point in the database
     lastdate = session.query(Measurement.date).order_by(Measurement.date.desc()).first()
     lastdate = dt.datetime.strptime(str(lastdate[0]), '%Y-%m-%d')
+
 
     # Perform a query to retrieve the data and precipitation scores
     lastyear =  lastdate - dt.timedelta(days=365)
@@ -81,6 +87,7 @@ def tobs():
 
 @app.route("/api/v1.0/<start>")
 def start(start):
+    session, Measurement, Station = db_initialize()
     start_date = dt.datetime.strptime(start,'%Y-%m-%d')
     results = session.query(func.min(Measurement.tobs).label("min temp"),
     func.avg(Measurement.tobs).label("mean temp"),func.max(Measurement.tobs).label("max temp"))\
@@ -90,6 +97,7 @@ def start(start):
 
 @app.route("/api/v1.0/<start>/<end>")
 def start_end(start,end):
+    session, Measurement, Station = db_initialize()
     start_date = dt.datetime.strptime(start,'%Y-%m-%d')
     end_date = dt.datetime.strptime(end,'%Y-%m-%d')
     
